@@ -186,6 +186,8 @@
       } else {
         logDebug("Extension disabled initially. Not performing replacements or attaching listeners.");
       }
+      // Also attach listeners for ChatGPT's copy buttons within the chatRoot
+      attachChatGPTCopyButtonListeners(chatRoot);
       showOnboarding(enabled, onboardingShown);
     } else {
       logDebug(`Attempt ${attempts + 1}/${maxAttempts}: Chat root (#thread) not found.`);
@@ -195,6 +197,75 @@
       logDebug("Max attempts reached. Chat root not found. Exiting retry loop.");
     }
   }, intervalMs);
+
+  // Function to attach listeners to ChatGPT's specific copy buttons
+  function attachChatGPTCopyButtonListeners(rootElement) {
+    logDebug("Attaching ChatGPT copy button listeners.");
+    // Using MutationObserver to detect when new copy buttons appear dynamically
+    const copyButtonObserver = new MutationObserver(mutations => {
+      mutations.forEach(mutation => {
+        if (mutation.addedNodes && mutation.addedNodes.length > 0) {
+          mutation.addedNodes.forEach(node => {
+            if (node.nodeType === Node.ELEMENT_NODE) {
+              // Look for the specific copy button selector within added nodes
+              const copyButtons = node.querySelectorAll('button[data-testid^="conversation-copy-button"]'); // Common selector
+              copyButtons.forEach(button => {
+                if (!button.dataset.bashdatdashListener) { // Prevent attaching multiple listeners
+                  logDebug("Attaching listener to ChatGPT copy button:", button);
+                  button.addEventListener('click', handleChatGPTCopyButtonClick);
+                  button.dataset.bashdatdashListener = 'true'; // Mark as handled
+                }
+              });
+            }
+          });
+        }
+      });
+    });
+
+    copyButtonObserver.observe(rootElement, { childList: true, subtree: true });
+
+    // Also find and attach listeners to existing copy buttons on initial load
+    const existingCopyButtons = rootElement.querySelectorAll('button[data-testid^="conversation-copy-button"]');
+    existingCopyButtons.forEach(button => {
+      if (!button.dataset.bashdatdashListener) {
+        logDebug("Attaching listener to existing ChatGPT copy button:", button);
+        button.addEventListener('click', handleChatGPTCopyButtonClick);
+        button.dataset.bashdatdashListener = 'true';
+      }
+    });
+  }
+
+  // Custom handler for ChatGPT's copy button clicks
+  function handleChatGPTCopyButtonClick(e) {
+    logDebug("ChatGPT copy button clicked.", e.target);
+    e.preventDefault(); // Prevent ChatGPT's default copy behavior
+    e.stopImmediatePropagation(); // Stop propagation to prevent other handlers from running
+
+    // Find the text content associated with this copy button
+    // This is highly dependent on ChatGPT's DOM structure
+    // A common pattern is that the button is near the text block it copies
+    let textContentElement = e.target.closest('div[data-testid^="conversation-message"]');
+    if (!textContentElement) {
+      textContentElement = e.target.closest('div[class*="text-message"]'); // Fallback
+    }
+
+    if (textContentElement) {
+      // Get the raw text, apply our replacement, and then copy to clipboard
+      const rawText = textContentElement.innerText || textContentElement.textContent;
+      const fixedText = rawText.replace(pattern, replacement);
+      logDebug("ChatGPT Copy: Raw text from element:", rawText);
+      logDebug("ChatGPT Copy: Fixed text for clipboard:", fixedText);
+
+      navigator.clipboard.writeText(fixedText)
+        .then(() => logDebug("Text successfully copied to clipboard via custom handler."))
+        .catch(err => console.error("BashDatDash Error: Failed to copy text via custom handler:", err));
+    } else {
+      logDebug("ChatGPT Copy: Could not find associated text content element.");
+      // Fallback: If we can't find the associated text, let ChatGPT's default copy proceed if it still runs
+      // Re-trigger the default copy if we couldn't handle it, though we tried to prevent it.
+      // This can be tricky if we fully prevented default.
+    }
+  }
 
   async function showOnboarding(extensionEnabled, onboardingAlreadyShown) {
     logDebug("showOnboarding called. Onboarding already shown:", onboardingAlreadyShown);
