@@ -20,6 +20,9 @@
   const validReplacements = [', ', '; ', '--'];
   const replacement = validReplacements.includes(replaceWith) ? replaceWith : ', ';
 
+  let chatRootObserver = null; // Declare observer globally for management
+  let copyListenerAttached = false; // Track clipboard listener state
+
   logDebug("Settings retrieved:", { enabled, replaceWhat, storedReplaceWith: replaceWith, effectiveReplacement: replacement, onboardingShown });
 
   if (!enabled && onboardingShown) {
@@ -56,21 +59,57 @@
     }
   }
 
+  // Function to activate/deactivate the extension's core logic
+  function setExtensionActiveState(isActive) {
+    if (isActive) {
+      logDebug("Activating extension features.");
+      // Re-attach observer and listeners if not already active
+      const chatRoot = document.querySelector('#thread');
+      if (chatRoot) {
+        walkAndReplace(chatRoot);
+        if (!chatRootObserver) {
+          chatRootObserver = observeStreaming(chatRoot);
+        }
+        if (!copyListenerAttached) {
+          attachClipboardInterceptor();
+          copyListenerAttached = true;
+        }
+      } else {
+        logDebug("Chat root not found during activation attempt. Will retry.");
+        // The retry interval will handle finding chatRoot and then activate
+      }
+    } else {
+      logDebug("Deactivating extension features.");
+      if (chatRootObserver) {
+        chatRootObserver.disconnect();
+        chatRootObserver = null;
+      }
+      if (copyListenerAttached) {
+        document.removeEventListener('copy', handleClipboardCopy);
+        copyListenerAttached = false;
+      }
+    }
+  }
+
+  // Separate the clipboard handler function to allow easy removal
+  function handleClipboardCopy(e) {
+    logDebug("Clipboard: Copy event triggered.");
+    const sel = window.getSelection();
+    if (!sel || !sel.rangeCount) {
+      logDebug("Clipboard: No selection or range count.");
+      return;
+    }
+    const raw = sel.toString();
+    const fixed = raw.replace(pattern, replacement);
+    logDebug("Clipboard: Raw text - ", raw, " Fixed text - ", fixed);
+    e.clipboardData.setData('text/plain', fixed);
+    e.clipboardData.setData('text/html', fixed);
+    e.preventDefault();
+  }
+
   function attachClipboardInterceptor() {
     logDebug("Attaching clipboard interceptor.");
-    document.addEventListener('copy', e => {
-      const sel = window.getSelection();
-      if (!sel || !sel.rangeCount) {
-        logDebug("Clipboard: No selection or range count.");
-        return;
-      }
-      const raw = sel.toString();
-      const fixed = raw.replace(pattern, replacement);
-      logDebug("Clipboard: Raw text - ", raw, " Fixed text - ", fixed);
-      e.clipboardData.setData('text/plain', fixed);
-      e.clipboardData.setData('text/html', fixed);
-      e.preventDefault();
-    });
+    document.addEventListener('copy', handleClipboardCopy);
   }
 
   function observeStreaming(chatRoot) {
@@ -84,8 +123,37 @@
       }
     });
     observer.observe(chatRoot, { characterData: true, subtree: true });
+    return observer; // Return the observer so it can be disconnected later
   }
 
+  // Listen for messages from the popup or background script
+  chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+    logDebug("Message received in content script:", message);
+    if (message.type === 'SETTINGS_UPDATED') {
+      // Re-fetch settings or use message data to update internal state
+      chrome.storage.sync.get(['enabled', 'replaceWhat', 'replaceWith'], (updatedData) => {
+        const newEnabledState = updatedData.enabled ?? true;
+        // Update pattern and replacement if replaceWhat/With also changed
+        // (though current message only sends 'enabled')
+        // For simplicity, re-init the whole state based on new settings.
+        // If replaceWhat or replaceWith can be changed dynamically, you'd re-calculate pattern/replacement here.
+
+        setExtensionActiveState(newEnabledState);
+      });
+    } else if (message.type === 'UPDATE_DASH_SETTINGS') {
+      // This message type could be used if replaceWhat/With were changed dynamically
+      // For now, we only respond to general SETTINGS_UPDATED from popup
+      const newReplaceWhat = message.replaceWhat || 'em';
+      const newReplaceWith = message.replaceWith || ', ';
+
+      // Update the pattern and replacement variables here
+      // This requires the pattern and replacement to be non-const if they are to be updated dynamically
+      // For this step, we'll keep them as const and rely on re-activation to pick new settings.
+      logDebug("Received dynamic dash setting update, but not dynamically re-applying patterns. Reload page for full effect if not already handled by full SETTINGS_UPDATED message.");
+    }
+  });
+
+  // Initial setup: activate if enabled, or just show onboarding if first run.
   const intervalMs = 200;
   const maxAttempts = 50;
   let attempts = 0;
@@ -95,12 +163,10 @@
       logDebug("Chat root (#thread) found.", chatRoot);
       clearInterval(retry);
       if (enabled) {
-        logDebug("Extension enabled. Performing replacements and attaching listeners.");
-        walkAndReplace(chatRoot);
-        observeStreaming(chatRoot);
-        attachClipboardInterceptor();
+        logDebug("Extension enabled initially. Performing replacements and attaching listeners.");
+        setExtensionActiveState(true);
       } else {
-        logDebug("Extension disabled. Not performing replacements or attaching listeners.");
+        logDebug("Extension disabled initially. Not performing replacements or attaching listeners.");
       }
       showOnboarding(enabled, onboardingShown);
     } else {
