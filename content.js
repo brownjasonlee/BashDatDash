@@ -17,7 +17,10 @@
   const enabled = data.enabled ?? true; // Default to true if not set
   const { replaceWhat, replaceWith, onboardingShown } = data;
 
-  logDebug("Settings retrieved:", { enabled, replaceWhat, replaceWith, onboardingShown });
+  const validReplacements = [', ', '; ', '--'];
+  const replacement = validReplacements.includes(replaceWith) ? replaceWith : ', ';
+
+  logDebug("Settings retrieved:", { enabled, replaceWhat, storedReplaceWith: replaceWith, effectiveReplacement: replacement, onboardingShown });
 
   if (!enabled && onboardingShown) {
     logDebug("Extension is disabled and onboarding has been shown. Exiting.");
@@ -30,8 +33,6 @@
     both: /[\u2013\u2014]/g
   };
   const pattern = dashPatterns[replaceWhat || 'em'];
-  const validReplacements = [', ', '; ', '--'];
-  const replacement = validReplacements.includes(replaceWith) ? replaceWith : ', ';
 
   function replaceDashesInTextNode(node) {
     if (!pattern.test(node.nodeValue)) {
