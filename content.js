@@ -119,11 +119,23 @@
         if (m.type === 'characterData') {
           logDebug("MutationObserver: Character data change detected.", m.target.nodeValue);
           replaceDashesInTextNode(m.target);
+        } else if (m.type === 'childList' && m.addedNodes.length > 0) {
+          logDebug("MutationObserver: Child list change detected. Added nodes:", m.addedNodes.length);
+          m.addedNodes.forEach(node => {
+            if (node.nodeType === Node.ELEMENT_NODE) { // Only process element nodes
+              // Exclude input/textarea from processing directly
+              if (node.closest('[contenteditable="true"], input, textarea')) {
+                logDebug("Skipping newly added editable element or its child for walkAndReplace.", node);
+                return;
+              }
+              walkAndReplace(node);
+            }
+          });
         }
       }
     });
-    observer.observe(chatRoot, { characterData: true, subtree: true });
-    return observer; // Return the observer so it can be disconnected later
+    observer.observe(chatRoot, { childList: true, characterData: true, subtree: true });
+    return observer;
   }
 
   // Listen for messages from the popup or background script
