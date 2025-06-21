@@ -212,7 +212,7 @@
               copyButtons.forEach(button => {
                 if (!button.dataset.bashdatdashListener) {
                   logDebug("Attaching listener to ChatGPT copy button:", button);
-                  button.addEventListener('click', handleChatGPTCopyButtonClick);
+                  button.addEventListener('click', handleChatGPTCopyButtonClick, true);
                   button.dataset.bashdatdashListener = 'true';
                 }
               });
@@ -229,7 +229,7 @@
     existingCopyButtons.forEach(button => {
       if (!button.dataset.bashdatdashListener) {
         logDebug("Attaching listener to existing ChatGPT copy button:", button);
-        button.addEventListener('click', handleChatGPTCopyButtonClick);
+        button.addEventListener('click', handleChatGPTCopyButtonClick, true);
         button.dataset.bashdatdashListener = 'true';
       }
     });
