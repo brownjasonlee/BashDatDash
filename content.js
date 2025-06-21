@@ -13,7 +13,8 @@
     both: /[\u2013\u2014]/g
   };
   const pattern = dashPatterns[replaceWhat || 'em'];
-  const replacement = replaceWith ?? ', ';
+  const validReplacements = [', ', '; ', '--'];
+  const replacement = validReplacements.includes(replaceWith) ? replaceWith : ', ';
 
   function replaceDashesInTextNode(node) {
     if (!pattern.test(node.nodeValue)) return;

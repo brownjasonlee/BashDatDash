@@ -1,7 +1,8 @@
 chrome.storage.sync.get(['enabled', 'replaceWhat', 'replaceWith'], (data) => {
   document.getElementById('toggleEnabled').checked = data.enabled ?? true;
   document.getElementById('replaceWhat').value = data.replaceWhat || 'em';
-  document.getElementById('replaceWith').value = data.replaceWith || ', ';
+  const validReplaceWith = [', ', '; ', '--'];
+  document.getElementById('replaceWith').value = validReplaceWith.includes(data.replaceWith) ? data.replaceWith : ', ';
 });
 
 document.getElementById('toggleEnabled').addEventListener('change', (e) => {
