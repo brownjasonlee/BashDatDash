@@ -208,12 +208,12 @@
           mutation.addedNodes.forEach(node => {
             if (node.nodeType === Node.ELEMENT_NODE) {
               // Look for the specific copy button selector within added nodes
-              const copyButtons = node.querySelectorAll('button[data-testid^="conversation-copy-button"]'); // Common selector
+              const copyButtons = node.querySelectorAll('button[data-testid="copy-turn-action-button"]'); // New precise selector
               copyButtons.forEach(button => {
-                if (!button.dataset.bashdatdashListener) { // Prevent attaching multiple listeners
+                if (!button.dataset.bashdatdashListener) {
                   logDebug("Attaching listener to ChatGPT copy button:", button);
                   button.addEventListener('click', handleChatGPTCopyButtonClick);
-                  button.dataset.bashdatdashListener = 'true'; // Mark as handled
+                  button.dataset.bashdatdashListener = 'true';
                 }
               });
             }
@@ -225,7 +225,7 @@
     copyButtonObserver.observe(rootElement, { childList: true, subtree: true });
 
     // Also find and attach listeners to existing copy buttons on initial load
-    const existingCopyButtons = rootElement.querySelectorAll('button[data-testid^="conversation-copy-button"]');
+    const existingCopyButtons = rootElement.querySelectorAll('button[data-testid="copy-turn-action-button"]'); // New precise selector
     existingCopyButtons.forEach(button => {
       if (!button.dataset.bashdatdashListener) {
         logDebug("Attaching listener to existing ChatGPT copy button:", button);
@@ -242,11 +242,13 @@
     e.stopImmediatePropagation(); // Stop propagation to prevent other handlers from running
 
     // Find the text content associated with this copy button
-    // This is highly dependent on ChatGPT's DOM structure
-    // A common pattern is that the button is near the text block it copies
-    let textContentElement = e.target.closest('div[data-testid^="conversation-message"]');
+    // The button is often a sibling of or within a parent of the text content.
+    // We need to traverse up to a common ancestor that contains the actual text message.
+    let textContentElement = e.target.closest('.markdown.prose'); // This class typically contains the formatted text
+    
+    // Fallback if the above selector fails (e.g., for system messages or different structures)
     if (!textContentElement) {
-      textContentElement = e.target.closest('div[class*="text-message"]'); // Fallback
+      textContentElement = e.target.closest('div[data-testid^="conversation-message"]');
     }
 
     if (textContentElement) {
@@ -260,10 +262,9 @@
         .then(() => logDebug("Text successfully copied to clipboard via custom handler."))
         .catch(err => console.error("BashDatDash Error: Failed to copy text via custom handler:", err));
     } else {
-      logDebug("ChatGPT Copy: Could not find associated text content element.");
-      // Fallback: If we can't find the associated text, let ChatGPT's default copy proceed if it still runs
-      // Re-trigger the default copy if we couldn't handle it, though we tried to prevent it.
-      // This can be tricky if we fully prevented default.
+      logDebug("ChatGPT Copy: Could not find associated text content element to copy.");
+      // As a last resort, if we couldn't find the text, allow default action if it helps.
+      // However, since we used preventDefault, this part might need manual re-triggering of copy.
     }
   }
 
