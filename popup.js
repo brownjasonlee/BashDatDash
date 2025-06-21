@@ -1,8 +1,20 @@
 chrome.storage.sync.get(['enabled', 'replaceWhat', 'replaceWith'], (data) => {
-  document.getElementById('toggleEnabled').checked = data.enabled ?? true;
-  document.getElementById('replaceWhat').value = data.replaceWhat || 'em';
+  // Set default values if not already present in storage
+  const initialEnabled = data.enabled ?? true;
+  const initialReplaceWhat = data.replaceWhat || 'em';
   const validReplaceWith = [', ', '; ', '--'];
-  document.getElementById('replaceWith').value = validReplaceWith.includes(data.replaceWith) ? data.replaceWith : ', ';
+  const initialReplaceWith = validReplaceWith.includes(data.replaceWith) ? data.replaceWith : ', ';
+
+  document.getElementById('toggleEnabled').checked = initialEnabled;
+  document.getElementById('replaceWhat').value = initialReplaceWhat;
+  document.getElementById('replaceWith').value = initialReplaceWith;
+
+  // Save defaults to storage if they were undefined
+  chrome.storage.sync.set({
+    enabled: initialEnabled,
+    replaceWhat: initialReplaceWhat,
+    replaceWith: initialReplaceWith
+  });
 });
 
 document.getElementById('toggleEnabled').addEventListener('change', (e) => {
