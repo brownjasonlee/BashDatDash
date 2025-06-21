@@ -22,28 +22,35 @@ document.getElementById('toggleEnabled').addEventListener('change', (e) => {
   chrome.storage.sync.set({ enabled });
   // Send message to content script about the new enabled state
   chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-    if (tabs[0]) {
-      chrome.tabs.sendMessage(tabs[0].id, { type: 'SETTINGS_UPDATED', enabled });
+    if (tabs[0] && tabs[0].id) {
+      chrome.tabs.sendMessage(tabs[0].id, { type: 'SETTINGS_UPDATED', enabled }).catch(() => {
+        // Catch the error if the receiving end does not exist (e.g., ChatGPT tab not open)
+        console.log("BashDatDash: Content script not found or not ready to receive message.");
+      });
     }
   });
 });
 
 document.getElementById('replaceWhat').addEventListener('change', (e) => {
   chrome.storage.sync.set({ replaceWhat: e.target.value });
-  // Send message to content script about the new replaceWhat value (optional, but good for consistency)
+  // Send message to content script about the new replaceWhat value
   chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-    if (tabs[0]) {
-      chrome.tabs.sendMessage(tabs[0].id, { type: 'SETTINGS_UPDATED', replaceWhat: e.target.value });
+    if (tabs[0] && tabs[0].id) {
+      chrome.tabs.sendMessage(tabs[0].id, { type: 'SETTINGS_UPDATED', replaceWhat: e.target.value }).catch(() => {
+        console.log("BashDatDash: Content script not found or not ready to receive message.");
+      });
     }
   });
 });
 
 document.getElementById('replaceWith').addEventListener('change', (e) => {
   chrome.storage.sync.set({ replaceWith: e.target.value });
-  // Send message to content script about the new replaceWith value (optional, but good for consistency)
+  // Send message to content script about the new replaceWith value
   chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-    if (tabs[0]) {
-      chrome.tabs.sendMessage(tabs[0].id, { type: 'SETTINGS_UPDATED', replaceWith: e.target.value });
+    if (tabs[0] && tabs[0].id) {
+      chrome.tabs.sendMessage(tabs[0].id, { type: 'SETTINGS_UPDATED', replaceWith: e.target.value }).catch(() => {
+        console.log("BashDatDash: Content script not found or not ready to receive message.");
+      });
     }
   });
 });
