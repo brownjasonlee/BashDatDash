@@ -116,16 +116,22 @@
     logDebug("Attaching MutationObserver to chat root:", chatRoot);
     const observer = new MutationObserver(muts => {
       for (const m of muts) {
+        // Check if the mutation target or its ancestor is an editable element
+        if (m.target.closest && m.target.closest('[contenteditable="true"], input, textarea')) {
+          logDebug("MutationObserver: Skipping editable element or its child for all processing.", m.target);
+          continue; // Skip this mutation entirely
+        }
+
         if (m.type === 'characterData') {
           logDebug("MutationObserver: Character data change detected.", m.target.nodeValue);
           replaceDashesInTextNode(m.target);
         } else if (m.type === 'childList' && m.addedNodes.length > 0) {
           logDebug("MutationObserver: Child list change detected. Added nodes:", m.addedNodes.length);
           m.addedNodes.forEach(node => {
-            if (node.nodeType === Node.ELEMENT_NODE) { // Only process element nodes
-              // Exclude input/textarea from processing directly
+            if (node.nodeType === Node.ELEMENT_NODE) {
+              // This check is still useful for initial walk on newly added elements
               if (node.closest('[contenteditable="true"], input, textarea')) {
-                logDebug("Skipping newly added editable element or its child for walkAndReplace.", node);
+                logDebug("Skipping newly added editable element or its child for walkAndReplace (from childList).");
                 return;
               }
               walkAndReplace(node);
