@@ -1,11 +1,28 @@
 (async function () {
+  // --- DEBUGGING CONFIGURATION ---
+  const DEBUG_MODE = true; // Set to true to enable debug logs, false to disable.
+
+  function logDebug(message, ...args) {
+    if (DEBUG_MODE) {
+      console.log(`[BashDatDash Debug]: ${message}`, ...args);
+    }
+  }
+  // -------------------------------
+
+  logDebug("Content script loaded.");
+
   const data = await new Promise(resolve =>
     chrome.storage.sync.get(['enabled', 'replaceWhat', 'replaceWith', 'onboardingShown'], resolve)
   );
   const enabled = data.enabled ?? true; // Default to true if not set
   const { replaceWhat, replaceWith, onboardingShown } = data;
 
-  if (!enabled && onboardingShown) return; // Only return if explicitly disabled AND onboarding has been shown
+  logDebug("Settings retrieved:", { enabled, replaceWhat, replaceWith, onboardingShown });
+
+  if (!enabled && onboardingShown) {
+    logDebug("Extension is disabled and onboarding has been shown. Exiting.");
+    return; // Only return if explicitly disabled AND onboarding has been shown
+  }
 
   const dashPatterns = {
     em: /\u2014/g,
@@ -17,12 +34,20 @@
   const replacement = validReplacements.includes(replaceWith) ? replaceWith : ', ';
 
   function replaceDashesInTextNode(node) {
-    if (!pattern.test(node.nodeValue)) return;
-    if (node.parentNode?.closest('[contenteditable="true"], input, textarea')) return;
+    if (!pattern.test(node.nodeValue)) {
+      logDebug("No dash pattern found in node:", node.nodeValue);
+      return;
+    }
+    if (node.parentNode?.closest('[contenteditable="true"], input, textarea')) {
+      logDebug("Skipping editable element:", node.nodeValue);
+      return;
+    }
+    logDebug("Replacing dashes in node:", node.nodeValue);
     node.nodeValue = node.nodeValue.replace(pattern, replacement);
   }
 
   function walkAndReplace(el) {
+    logDebug("Performing initial walk and replace on:", el);
     const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT);
     let node;
     while ((node = walker.nextNode())) {
@@ -31,11 +56,16 @@
   }
 
   function attachClipboardInterceptor() {
+    logDebug("Attaching clipboard interceptor.");
     document.addEventListener('copy', e => {
       const sel = window.getSelection();
-      if (!sel || !sel.rangeCount) return;
+      if (!sel || !sel.rangeCount) {
+        logDebug("Clipboard: No selection or range count.");
+        return;
+      }
       const raw = sel.toString();
       const fixed = raw.replace(pattern, replacement);
+      logDebug("Clipboard: Raw text - ", raw, " Fixed text - ", fixed);
       e.clipboardData.setData('text/plain', fixed);
       e.clipboardData.setData('text/html', fixed);
       e.preventDefault();
@@ -43,9 +73,11 @@
   }
 
   function observeStreaming(chatRoot) {
+    logDebug("Attaching MutationObserver to chat root:", chatRoot);
     const observer = new MutationObserver(muts => {
       for (const m of muts) {
         if (m.type === 'characterData') {
+          logDebug("MutationObserver: Character data change detected.", m.target.nodeValue);
           replaceDashesInTextNode(m.target);
         }
       }
@@ -59,20 +91,31 @@
   const retry = setInterval(() => {
     const chatRoot = document.querySelector('#thread');
     if (chatRoot) {
+      logDebug("Chat root (#thread) found.", chatRoot);
       clearInterval(retry);
       if (enabled) {
+        logDebug("Extension enabled. Performing replacements and attaching listeners.");
         walkAndReplace(chatRoot);
         observeStreaming(chatRoot);
         attachClipboardInterceptor();
+      } else {
+        logDebug("Extension disabled. Not performing replacements or attaching listeners.");
       }
       showOnboarding(enabled, onboardingShown);
+    } else {
+      logDebug(`Attempt ${attempts + 1}/${maxAttempts}: Chat root (#thread) not found.`);
     }
-    if (++attempts >= maxAttempts) clearInterval(retry);
+    if (++attempts >= maxAttempts) {
+      clearInterval(retry);
+      logDebug("Max attempts reached. Chat root not found. Exiting retry loop.");
+    }
   }, intervalMs);
 
   async function showOnboarding(extensionEnabled, onboardingAlreadyShown) {
+    logDebug("showOnboarding called. Onboarding already shown:", onboardingAlreadyShown);
     if (onboardingAlreadyShown) return; // Don't show if already shown
 
+    logDebug("Displaying onboarding modal.");
     const modalOverlay = document.createElement('div');
     modalOverlay.id = 'bashdatdash-onboarding-overlay';
     modalOverlay.style.cssText = `
@@ -124,8 +167,11 @@
 
     document.getElementById('bashdatdash-onboarding-close').addEventListener('click', () => {
       modalOverlay.remove();
+      logDebug("Onboarding modal closed.");
     });
 
-    chrome.storage.sync.set({ onboardingShown: true });
+    chrome.storage.sync.set({ onboardingShown: true }, () => {
+      logDebug("onboardingShown flag set to true in storage.");
+    });
   }
 })();
