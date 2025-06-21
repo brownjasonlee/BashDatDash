@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <label>
+    <input type="checkbox" id="toggleEnabled">
+    Enable BashDatDash
+  </label>
+
+  <label for="replaceWhat">Replace:</label>
+  <select id="replaceWhat">
+    <option value="em">Em dash (—)</option>
+    <option value="en">En dash (–)</option>
+    <option value="both" selected>Both</option>
+  </select>
+
+  <label for="replaceWith">Replace with:</label>
+  <select id="replaceWith">
+    <option value=", ">Comma + space</option>
+    <option value="--">Double hyphen (--)</option>
+    <option value=" ">Space</option>
+    <option value="">Nothing</option>
+  </select>
+
+  <div class="footer">
+    <a id="buyCoffee" href="https://coff.ee/brownjason1" target="_blank" rel="noopener noreferrer"
+      style="display:inline-block; background-color:#40DCA5; color:#fff; font-family:Cookie, cursive; font-size:14px; padding:6px 10px; border-radius:5px; text-decoration:none;">
+      ☕ Buy me a coffee
+    </a>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>

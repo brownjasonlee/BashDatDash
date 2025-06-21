@@ -1,0 +1,32 @@
+body {
+  font-family: sans-serif;
+  padding: 10px;
+  width: 250px;
+}
+
+label {
+  display: block;
+  margin: 10px 0 5px;
+}
+
+select, input[type=checkbox] {
+  width: 100%;
+}
+
+.footer {
+  margin-top: 15px;
+  text-align: center;
+  font-size: 0.9em;
+}
+
+/* Style for the Buy Me a Coffee button */
+#buyCoffee {
+  display: inline-block;
+  background-color: #40DCA5; /* A pleasant green */
+  color: #fff;
+  font-family: 'Cookie', cursive; /* Example font, ensure it's available or use a web-safe alternative */
+  font-size: 14px;
+  padding: 6px 10px;
+  border-radius: 5px;
+  text-decoration: none;
+} 
