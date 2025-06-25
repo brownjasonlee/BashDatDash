@@ -219,7 +219,9 @@
 
   // New: Delegated handler for ChatGPT's copy button clicks
   function handleChatGPTCopyButtonClickDelegated(e) {
+    logDebug("Delegated handler called. Event target:", e.target);
     const copyButton = e.target.closest('button[data-testid="copy-turn-action-button"]');
+    logDebug("Delegated handler - copyButton (closest result):", copyButton);
 
     if (copyButton) {
       logDebug("Delegated ChatGPT copy button clicked.", copyButton);
@@ -244,6 +246,8 @@
       } else {
         logDebug("Delegated ChatGPT Copy: Could not find associated text content element to copy.");
       }
+    } else {
+      logDebug("Delegated handler: Clicked element is not a copy button or its descendant.");
     }
   }
 
