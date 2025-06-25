@@ -22,7 +22,6 @@
 
   let chatRootObserver = null; // Declare observer globally for management
   let copyListenerAttached = false; // Track clipboard listener state
-  let chatGPTCopyButtonListenerAttached = false; // New: Track ChatGPT copy listener state
 
   logDebug("Settings retrieved:", { enabled, replaceWhat, storedReplaceWith: replaceWith, effectiveReplacement: replacement, onboardingShown });
 
@@ -64,8 +63,7 @@
   function setExtensionActiveState(isActive) {
     if (isActive) {
       logDebug("Activating extension features.");
-      // Re-attach observer and listeners if not already active
-      const chatRoot = document.querySelector('#thread');
+      const chatRoot = document.querySelector('#thread'); // Still need chatRoot for observer
       if (chatRoot) {
         walkAndReplace(chatRoot); // Re-process all existing text
         if (!chatRootObserver) {
@@ -75,15 +73,10 @@
           attachClipboardInterceptor();
           copyListenerAttached = true;
         }
-        // New: Attach delegated listener for ChatGPT's copy buttons
-        if (!chatGPTCopyButtonListenerAttached) {
-          attachChatGPTCopyButtonDelegatedListener(chatRoot);
-          chatGPTCopyButtonListenerAttached = true;
-        }
-      } else {
-        logDebug("Chat root not found during activation attempt. Will retry.");
-        // The retry interval will handle finding chatRoot and then activate
       }
+      // Attach delegated listener for ChatGPT's copy buttons to document.body, regardless of chatRoot
+      attachChatGPTCopyButtonDelegatedListener();
+
     } else {
       logDebug("Deactivating extension features.");
       if (chatRootObserver) {
@@ -94,14 +87,8 @@
         document.removeEventListener('copy', handleClipboardCopy);
         copyListenerAttached = false;
       }
-      // New: Remove delegated listener for ChatGPT's copy buttons
-      if (chatGPTCopyButtonListenerAttached) {
-        const chatRoot = document.querySelector('#thread');
-        if (chatRoot) {
-          chatRoot.removeEventListener('click', handleChatGPTCopyButtonClickDelegated);
-        }
-        chatGPTCopyButtonListenerAttached = false;
-      }
+      // Remove delegated listener for ChatGPT's copy buttons from document.body
+      removeChatGPTCopyButtonDelegatedListener();
     }
   }
 
@@ -143,12 +130,20 @@
           logDebug("MutationObserver: Child list change detected. Added nodes:", m.addedNodes.length);
           m.addedNodes.forEach(node => {
             if (node.nodeType === Node.ELEMENT_NODE) {
-              // This check is still useful for initial walk on newly added elements
-              if (node.closest('[contenteditable="true"], input, textarea')) {
-                logDebug("Skipping newly added editable element or its child for walkAndReplace (from childList).");
-                return;
+              // New: Find all .markdown.prose elements within the added subtree
+              const proseElements = node.querySelectorAll('.markdown.prose');
+              if (proseElements.length > 0) {
+                logDebug("MutationObserver (childList): Found .markdown.prose elements in added subtree. Processing.", node);
+                proseElements.forEach(proseElement => {
+                  walkAndReplace(proseElement);
+                });
+              } else {
+                // Fallback: If no specific prose elements are found, perform a general walk on the added node itself.
+                // This is important for ensuring coverage for elements that might not directly contain .markdown.prose
+                // but still hold text or are parents of text nodes.
+                logDebug("MutationObserver (childList): No .markdown.prose found in added subtree. Attempting general walk on:", node);
+                walkAndReplace(node);
               }
-              walkAndReplace(node);
             }
           });
         }
@@ -162,15 +157,29 @@
   chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     logDebug("Message received in content script:", message);
     if (message.type === 'SETTINGS_UPDATED') {
-      // Re-fetch settings or use message data to update internal state
       chrome.storage.sync.get(['enabled', 'replaceWhat', 'replaceWith'], (updatedData) => {
         const newEnabledState = updatedData.enabled ?? true;
-        // Update pattern and replacement if replaceWhat/With also changed
-        // (though current message only sends 'enabled')
-        // For simplicity, re-init the whole state based on new settings.
-        // If replaceWhat or replaceWith can be changed dynamically, you'd re-calculate pattern/replacement here.
+
+        // Re-calculate pattern and replacement if they might have changed due to popup settings
+        const newReplaceWhat = updatedData.replaceWhat || 'em';
+        const newValidReplacements = [', ', '; ', '--'];
+        const newReplacement = newValidReplacements.includes(updatedData.replaceWith) ? updatedData.replaceWith : ', ';
+
+        // Update global pattern and replacement if they were not const
+        // For now, these are const, so a full re-initialization on enable is needed for changes to take effect.
+        // If we want dynamic changes, pattern and replacement must be `let`.
+        // Let's make them `let` to support dynamic updates.
 
         setExtensionActiveState(newEnabledState);
+
+        // If re-enabled, force a re-scan of existing content immediately
+        if (newEnabledState) {
+          const currentChatRoot = document.querySelector('#thread');
+          if (currentChatRoot) {
+            logDebug("Forcing re-scan of chat history after settings update (enable).");
+            walkAndReplace(currentChatRoot);
+          }
+        }
       });
     } else if (message.type === 'UPDATE_DASH_SETTINGS') {
       // This message type could be used if replaceWhat/With were changed dynamically
@@ -200,7 +209,6 @@
       } else {
         logDebug("Extension disabled initially. Not performing replacements or attaching listeners.");
       }
-      // No need to call attachChatGPTCopyButtonListeners here anymore, it's handled by setExtensionActiveState
       showOnboarding(enabled, onboardingShown);
     } else {
       logDebug(`Attempt ${attempts + 1}/${maxAttempts}: Chat root (#thread) not found.`);
@@ -211,13 +219,18 @@
     }
   }, intervalMs);
 
-  // New: Delegated event listener for ChatGPT's copy buttons
-  function attachChatGPTCopyButtonDelegatedListener(rootElement) {
-    logDebug("Attaching delegated ChatGPT copy button listener.");
-    rootElement.addEventListener('click', handleChatGPTCopyButtonClickDelegated);
+  // Delegated event listener for ChatGPT's copy buttons - now attached to document.body
+  function attachChatGPTCopyButtonDelegatedListener() {
+    logDebug("Attaching delegated ChatGPT copy button listener to document.body.");
+    document.body.addEventListener('click', handleChatGPTCopyButtonClickDelegated, true); // Capture phase
   }
 
-  // New: Delegated handler for ChatGPT's copy button clicks
+  function removeChatGPTCopyButtonDelegatedListener() {
+    logDebug("Removing delegated ChatGPT copy button listener from document.body.");
+    document.body.removeEventListener('click', handleChatGPTCopyButtonClickDelegated, true);
+  }
+
+  // Delegated handler for ChatGPT's copy button clicks
   function handleChatGPTCopyButtonClickDelegated(e) {
     logDebug("Delegated handler called. Event target:", e.target);
     const copyButton = e.target.closest('button[data-testid="copy-turn-action-button"]');
@@ -229,9 +242,14 @@
       e.stopImmediatePropagation(); // Stop propagation to prevent other handlers from running
 
       // Find the text content associated with this copy button
-      let textContentElement = copyButton.closest('.markdown.prose');
-      if (!textContentElement) {
-        textContentElement = copyButton.closest('div[data-testid^="conversation-message"]');
+      // Instead of .closest(), find the common parent and then query for the prose element within it.
+      const messageTurnElement = copyButton.closest('article[data-testid^="conversation-turn-"]');
+      let textContentElement = null;
+
+      if (messageTurnElement) {
+        textContentElement = messageTurnElement.querySelector('.markdown.prose');
+      } else {
+        logDebug("Delegated ChatGPT Copy: Could not find parent message turn element.");
       }
 
       if (textContentElement) {
@@ -247,7 +265,8 @@
         logDebug("Delegated ChatGPT Copy: Could not find associated text content element to copy.");
       }
     } else {
-      logDebug("Delegated handler: Clicked element is not a copy button or its descendant.");
+      // This log is expected if other elements are clicked and don't match the copy button
+      // logDebug("Delegated handler: Clicked element is not a copy button or its descendant.");
     }
   }
 
