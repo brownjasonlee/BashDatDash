@@ -22,6 +22,7 @@
 
   let chatRootObserver = null; // Declare observer globally for management
   let copyListenerAttached = false; // Track clipboard listener state
+  let chatGPTCopyButtonListenerAttached = false; // New: Track ChatGPT copy listener state
 
   logDebug("Settings retrieved:", { enabled, replaceWhat, storedReplaceWith: replaceWith, effectiveReplacement: replacement, onboardingShown });
 
@@ -66,13 +67,18 @@
       // Re-attach observer and listeners if not already active
       const chatRoot = document.querySelector('#thread');
       if (chatRoot) {
-        walkAndReplace(chatRoot);
+        walkAndReplace(chatRoot); // Re-process all existing text
         if (!chatRootObserver) {
           chatRootObserver = observeStreaming(chatRoot);
         }
         if (!copyListenerAttached) {
           attachClipboardInterceptor();
           copyListenerAttached = true;
+        }
+        // New: Attach delegated listener for ChatGPT's copy buttons
+        if (!chatGPTCopyButtonListenerAttached) {
+          attachChatGPTCopyButtonDelegatedListener(chatRoot);
+          chatGPTCopyButtonListenerAttached = true;
         }
       } else {
         logDebug("Chat root not found during activation attempt. Will retry.");
@@ -87,6 +93,14 @@
       if (copyListenerAttached) {
         document.removeEventListener('copy', handleClipboardCopy);
         copyListenerAttached = false;
+      }
+      // New: Remove delegated listener for ChatGPT's copy buttons
+      if (chatGPTCopyButtonListenerAttached) {
+        const chatRoot = document.querySelector('#thread');
+        if (chatRoot) {
+          chatRoot.removeEventListener('click', handleChatGPTCopyButtonClickDelegated);
+        }
+        chatGPTCopyButtonListenerAttached = false;
       }
     }
   }
@@ -186,8 +200,7 @@
       } else {
         logDebug("Extension disabled initially. Not performing replacements or attaching listeners.");
       }
-      // Also attach listeners for ChatGPT's copy buttons within the chatRoot
-      attachChatGPTCopyButtonListeners(chatRoot);
+      // No need to call attachChatGPTCopyButtonListeners here anymore, it's handled by setExtensionActiveState
       showOnboarding(enabled, onboardingShown);
     } else {
       logDebug(`Attempt ${attempts + 1}/${maxAttempts}: Chat root (#thread) not found.`);
@@ -198,73 +211,39 @@
     }
   }, intervalMs);
 
-  // Function to attach listeners to ChatGPT's specific copy buttons
-  function attachChatGPTCopyButtonListeners(rootElement) {
-    logDebug("Attaching ChatGPT copy button listeners.");
-    // Using MutationObserver to detect when new copy buttons appear dynamically
-    const copyButtonObserver = new MutationObserver(mutations => {
-      mutations.forEach(mutation => {
-        if (mutation.addedNodes && mutation.addedNodes.length > 0) {
-          mutation.addedNodes.forEach(node => {
-            if (node.nodeType === Node.ELEMENT_NODE) {
-              // Look for the specific copy button selector within added nodes
-              const copyButtons = node.querySelectorAll('button[data-testid="copy-turn-action-button"]'); // New precise selector
-              copyButtons.forEach(button => {
-                if (!button.dataset.bashdatdashListener) {
-                  logDebug("Attaching listener to ChatGPT copy button:", button);
-                  button.addEventListener('click', handleChatGPTCopyButtonClick, true);
-                  button.dataset.bashdatdashListener = 'true';
-                }
-              });
-            }
-          });
-        }
-      });
-    });
-
-    copyButtonObserver.observe(rootElement, { childList: true, subtree: true });
-
-    // Also find and attach listeners to existing copy buttons on initial load
-    const existingCopyButtons = rootElement.querySelectorAll('button[data-testid="copy-turn-action-button"]'); // New precise selector
-    existingCopyButtons.forEach(button => {
-      if (!button.dataset.bashdatdashListener) {
-        logDebug("Attaching listener to existing ChatGPT copy button:", button);
-        button.addEventListener('click', handleChatGPTCopyButtonClick, true);
-        button.dataset.bashdatdashListener = 'true';
-      }
-    });
+  // New: Delegated event listener for ChatGPT's copy buttons
+  function attachChatGPTCopyButtonDelegatedListener(rootElement) {
+    logDebug("Attaching delegated ChatGPT copy button listener.");
+    rootElement.addEventListener('click', handleChatGPTCopyButtonClickDelegated);
   }
 
-  // Custom handler for ChatGPT's copy button clicks
-  function handleChatGPTCopyButtonClick(e) {
-    logDebug("ChatGPT copy button clicked.", e.target);
-    e.preventDefault(); // Prevent ChatGPT's default copy behavior
-    e.stopImmediatePropagation(); // Stop propagation to prevent other handlers from running
+  // New: Delegated handler for ChatGPT's copy button clicks
+  function handleChatGPTCopyButtonClickDelegated(e) {
+    const copyButton = e.target.closest('button[data-testid="copy-turn-action-button"]');
 
-    // Find the text content associated with this copy button
-    // The button is often a sibling of or within a parent of the text content.
-    // We need to traverse up to a common ancestor that contains the actual text message.
-    let textContentElement = e.target.closest('.markdown.prose'); // This class typically contains the formatted text
-    
-    // Fallback if the above selector fails (e.g., for system messages or different structures)
-    if (!textContentElement) {
-      textContentElement = e.target.closest('div[data-testid^="conversation-message"]');
-    }
+    if (copyButton) {
+      logDebug("Delegated ChatGPT copy button clicked.", copyButton);
+      e.preventDefault(); // Prevent ChatGPT's default copy behavior
+      e.stopImmediatePropagation(); // Stop propagation to prevent other handlers from running
 
-    if (textContentElement) {
-      // Get the raw text, apply our replacement, and then copy to clipboard
-      const rawText = textContentElement.innerText || textContentElement.textContent;
-      const fixedText = rawText.replace(pattern, replacement);
-      logDebug("ChatGPT Copy: Raw text from element:", rawText);
-      logDebug("ChatGPT Copy: Fixed text for clipboard:", fixedText);
+      // Find the text content associated with this copy button
+      let textContentElement = copyButton.closest('.markdown.prose');
+      if (!textContentElement) {
+        textContentElement = copyButton.closest('div[data-testid^="conversation-message"]');
+      }
 
-      navigator.clipboard.writeText(fixedText)
-        .then(() => logDebug("Text successfully copied to clipboard via custom handler."))
-        .catch(err => console.error("BashDatDash Error: Failed to copy text via custom handler:", err));
-    } else {
-      logDebug("ChatGPT Copy: Could not find associated text content element to copy.");
-      // As a last resort, if we couldn't find the text, allow default action if it helps.
-      // However, since we used preventDefault, this part might need manual re-triggering of copy.
+      if (textContentElement) {
+        const rawText = textContentElement.innerText || textContentElement.textContent;
+        const fixedText = rawText.replace(pattern, replacement);
+        logDebug("Delegated ChatGPT Copy: Raw text from element:", rawText);
+        logDebug("Delegated ChatGPT Copy: Fixed text for clipboard:", fixedText);
+
+        navigator.clipboard.writeText(fixedText)
+          .then(() => logDebug("Delegated: Text successfully copied to clipboard via custom handler."))
+          .catch(err => console.error("BashDatDash Error: Delegated: Failed to copy text via custom handler:", err));
+      } else {
+        logDebug("Delegated ChatGPT Copy: Could not find associated text content element to copy.");
+      }
     }
   }
 
