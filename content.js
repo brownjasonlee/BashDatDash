@@ -206,6 +206,13 @@
       if (enabled) {
         logDebug("Extension enabled initially. Performing replacements and attaching listeners.");
         setExtensionActiveState(true);
+        // New: Add a small delay and force a full re-scan of the chatRoot
+        // This addresses the "doesn't work at startup" and "partial replacement" issues
+        // by ensuring all *initially rendered* content is processed after DOM settles.
+        setTimeout(() => {
+          logDebug("Initial startup: Forcing full re-scan of chat history after a short delay.");
+          walkAndReplace(chatRoot);
+        }, 500); // 500ms delay, can adjust if needed
       } else {
         logDebug("Extension disabled initially. Not performing replacements or attaching listeners.");
       }
