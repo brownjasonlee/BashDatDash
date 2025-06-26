@@ -92,3 +92,29 @@ select {
   border-radius: 5px;
   text-decoration: none;
 }
+
+#previewSection {
+  border-top: 1px solid #ccc;
+  margin-top: 10px;
+  padding-top: 10px;
+}
+
+.preview-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 5px;
+}
+
+.carousel-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 16px;
+  padding: 0 4px;
+}
+
+#beforeSentence,
+#afterSentence {
+  margin: 2px 0;
+}
