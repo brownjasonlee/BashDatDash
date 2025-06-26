@@ -18,7 +18,7 @@
   const { replaceWhat, replaceWith, onboardingShown } = data;
 
   const validReplacements = [', ', '; ', '--'];
-  const replacement = validReplacements.includes(replaceWith) ? replaceWith : ', ';
+  let replacement = validReplacements.includes(replaceWith) ? replaceWith : ', ';
 
   let chatRootObserver = null; // Declare observer globally for management
   let copyListenerAttached = false; // Track clipboard listener state
@@ -35,7 +35,7 @@
     en: /\u2013/g,
     both: /[\u2013\u2014]/g
   };
-  const pattern = dashPatterns[replaceWhat || 'em'];
+  let pattern = dashPatterns[replaceWhat || 'em'];
 
   function replaceDashesInTextNode(node) {
     if (!pattern.test(node.nodeValue)) {
@@ -165,10 +165,9 @@
         const newValidReplacements = [', ', '; ', '--'];
         const newReplacement = newValidReplacements.includes(updatedData.replaceWith) ? updatedData.replaceWith : ', ';
 
-        // Update global pattern and replacement if they were not const
-        // For now, these are const, so a full re-initialization on enable is needed for changes to take effect.
-        // If we want dynamic changes, pattern and replacement must be `let`.
-        // Let's make them `let` to support dynamic updates.
+        // Update global pattern and replacement with new settings
+        pattern = dashPatterns[newReplaceWhat];
+        replacement = newReplacement;
 
         setExtensionActiveState(newEnabledState);
 
@@ -187,10 +186,10 @@
       const newReplaceWhat = message.replaceWhat || 'em';
       const newReplaceWith = message.replaceWith || ', ';
 
-      // Update the pattern and replacement variables here
-      // This requires the pattern and replacement to be non-const if they are to be updated dynamically
-      // For this step, we'll keep them as const and rely on re-activation to pick new settings.
-      logDebug("Received dynamic dash setting update, but not dynamically re-applying patterns. Reload page for full effect if not already handled by full SETTINGS_UPDATED message.");
+      // Directly update pattern and replacement when receiving dynamic settings
+      pattern = dashPatterns[newReplaceWhat];
+      replacement = newReplaceWith;
+      logDebug("Dynamic dash settings applied via UPDATE_DASH_SETTINGS message.");
     }
   });
 
