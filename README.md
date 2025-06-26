@@ -6,7 +6,7 @@ BashDatDash is a lightweight Chrome extension designed to enhance your ChatGPT e
 
 - **Automatic Dash Replacement:** Replaces em-dashes and/or en-dashes in streamed and initial ChatGPT text.
 - **Clipboard Integration:** Modifies copied text to reflect your chosen dash replacements.
-- **Customizable Settings:** Easily configure dash types to replace and the replacement string via a simple popup UI.
+- **Customizable Settings:** Easily configure **which** dash types to replace and the replacement string via a simple popup UI.
 - **Zero Overhead When Disabled:** The extension consumes no measurable runtime resources when turned off.
 
 ## Installation
@@ -18,7 +18,7 @@ BashDatDash is a lightweight Chrome extension designed to enhance your ChatGPT e
 
 ## Usage
 
-Once installed, BashDatDash will automatically activate on `chat.openai.com`. You can customize its behavior by clicking the extension icon in your Chrome toolbar. The popup will allow you to:
+Once installed, BashDatDash will automatically activate on `chatgpt.com`. You can customize its behavior by clicking the extension icon in your Chrome toolbar. The popup will allow you to:
 
 - Enable or disable the extension.
 - Choose whether to replace em-dashes, en-dashes, or both.
