@@ -22,6 +22,7 @@
 
   let chatRootObserver = null; // Declare observer globally for management
   let copyListenerAttached = false; // Track clipboard listener state
+  let copyButtonListenerAttached = false; // Track ChatGPT copy button listener state
 
   logDebug("Settings retrieved:", { enabled, replaceWhat, storedReplaceWith: replaceWith, effectiveReplacement: replacement, onboardingShown });
 
@@ -75,7 +76,10 @@
         }
       }
       // Attach delegated listener for ChatGPT's copy buttons to document.body, regardless of chatRoot
-      attachChatGPTCopyButtonDelegatedListener();
+      if (!copyButtonListenerAttached) {
+        attachChatGPTCopyButtonDelegatedListener();
+        copyButtonListenerAttached = true;
+      }
 
     } else {
       logDebug("Deactivating extension features.");
@@ -88,7 +92,10 @@
         copyListenerAttached = false;
       }
       // Remove delegated listener for ChatGPT's copy buttons from document.body
-      removeChatGPTCopyButtonDelegatedListener();
+      if (copyButtonListenerAttached) {
+        removeChatGPTCopyButtonDelegatedListener();
+        copyButtonListenerAttached = false;
+      }
     }
   }
 
