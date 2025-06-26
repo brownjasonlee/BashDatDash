@@ -1,32 +1,94 @@
 body {
-  font-family: sans-serif;
-  padding: 10px;
-  width: 250px;
+  font-family: Arial, sans-serif;
+  background-color: #f9f9f9;
+  padding: 15px;
+  width: 260px;
 }
 
-label {
+.toggle-container {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 15px;
+}
+
+.switch {
+  position: relative;
+  display: inline-block;
+  width: 40px;
+  height: 20px;
+}
+.switch input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+.slider {
+  position: absolute;
+  cursor: pointer;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: #ccc;
+  transition: .2s;
+  border-radius: 34px;
+}
+.slider:before {
+  position: absolute;
+  content: "";
+  height: 16px;
+  width: 16px;
+  left: 2px;
+  bottom: 2px;
+  background-color: white;
+  transition: .2s;
+  border-radius: 50%;
+}
+.switch input:checked + .slider {
+  background-color: #4caf50;
+}
+.switch input:checked + .slider:before {
+  transform: translateX(20px);
+}
+
+.option-group {
+  margin-bottom: 15px;
+}
+.option-group label {
+  font-weight: bold;
+  margin-bottom: 5px;
   display: block;
-  margin: 10px 0 5px;
+}
+.checkbox-item {
+  display: flex;
+  align-items: center;
+  margin: 3px 0;
+}
+.checkbox-item input {
+  margin-right: 6px;
 }
 
-select, input[type=checkbox] {
+select {
   width: 100%;
+  padding: 4px;
+  border-radius: 4px;
+  border: 1px solid #ccc;
 }
 
 .footer {
-  margin-top: 15px;
+  margin-top: 20px;
   text-align: center;
   font-size: 0.9em;
 }
 
-/* Style for the Buy Me a Coffee button */
 #buyCoffee {
   display: inline-block;
-  background-color: #40DCA5; /* A pleasant green */
+  background-color: #40DCA5;
   color: #fff;
-  font-family: 'Cookie', cursive; /* Example font, ensure it's available or use a web-safe alternative */
+  font-family: 'Cookie', cursive;
   font-size: 14px;
   padding: 6px 10px;
   border-radius: 5px;
   text-decoration: none;
-} 
+}

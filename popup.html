@@ -5,24 +5,41 @@
   <link rel="stylesheet" href="popup.css">
 </head>
 <body>
-  <label>
-    <input type="checkbox" id="toggleEnabled">
-    Enable BashDatDash
-  </label>
+  <div class="toggle-container">
+    <span>Enable BashDatDash</span>
+    <label class="switch">
+      <input type="checkbox" id="toggleEnabled">
+      <span class="slider"></span>
+    </label>
+  </div>
 
-  <label for="replaceWhat">Replace:</label>
-  <select id="replaceWhat">
-    <option value="em">Em dash (—)</option>
-    <option value="en">En dash (–)</option>
-    <option value="both" selected>Both</option>
-  </select>
+  <div class="option-group">
+    <label>Replace:</label>
+    <div class="checkbox-item">
+      <input type="checkbox" id="replaceEm">
+      <span>Em dash (—)</span>
+    </div>
+    <div class="checkbox-item">
+      <input type="checkbox" id="replaceEn">
+      <span>En dash (–)</span>
+    </div>
+  </div>
 
-  <label for="replaceWith">Replace with:</label>
-  <select id="replaceWith">
-    <option value=", ">Comma + space (, )</option>
-    <option value="; ">Semicolon + space (; )</option>
-    <option value="--">Double hyphen (--)</option>
-  </select>
+  <div class="option-group" id="replaceWithGroup">
+    <label>Replace with:</label>
+    <div class="checkbox-item">
+      <input type="checkbox" id="replaceComma" value=", " name="replaceWithOption">
+      <span>Comma + space (, )</span>
+    </div>
+    <div class="checkbox-item">
+      <input type="checkbox" id="replaceSemi" value="; " name="replaceWithOption">
+      <span>Semicolon + space (; )</span>
+    </div>
+    <div class="checkbox-item">
+      <input type="checkbox" id="replaceDoubleHyphen" value="--" name="replaceWithOption">
+      <span>Double hyphen (--)</span>
+    </div>
+  </div>
 
   <div class="footer">
     <a id="buyCoffee" href="https://coff.ee/brownjason1" target="_blank" rel="noopener noreferrer"
